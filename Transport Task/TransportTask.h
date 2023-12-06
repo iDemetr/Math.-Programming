@@ -1,0 +1,122 @@
+#pragma once
+#include "pch.h"
+
+#define potential std::pair<std::vector<double>*, std::vector<double>*> 
+
+//--------------------------------------------------------------------------------||
+
+struct cells {
+	cells(double *val, double cost) {		
+		Value = val;
+		Cost = cost;
+	}
+
+	~cells() {
+		//delete Value;
+	}
+
+	void setValue(double val) {
+		if (Value != nullptr)
+			*Value = val;
+		else
+			Value = new double (val);
+	}
+
+	double getValue() {
+		return (Value == nullptr) ? 0 : *Value;
+	}
+
+	double* Value;	// Значение базиса
+	double Cost;	// Вес ячейки
+};
+
+
+//--------------------------------------------------------------------------------||
+
+static class TransportTask {
+public:
+
+	static void Calc(std::string);
+
+private:
+
+	//--------------------------------------------------------------------------------||
+
+#pragma region --- Переменные ---
+
+	/// <summary>
+	/// Список производств.
+	/// </summary>
+	static std::vector<double> LProduction;
+	/// <summary>
+	/// Список потребителей.
+	/// </summary>
+	static std::vector<double> LConsumption;
+
+	/// <summary>
+	/// Базис.
+	/// </summary>
+	static std::vector<cells> Basis;
+
+	static int CountProduct;
+	static int CountConsumption;
+
+	static int indexPotential;
+
+#pragma endregion
+
+	//--------------------------------------------------------------------------------||
+
+	/// <summary>
+	/// Считывает входной файл в формате json
+	/// </summary>
+	static void ReadInput(std::string);
+
+	//--------------------------------------------------------------------------------||
+
+	/// <summary>
+	/// Алгоритм северо западного угла
+	/// </summary>
+	static void ANWA();
+
+	/// <summary>
+	/// Метод минимального элемента
+	/// </summary>
+	static void MME();
+
+	//--------------------------------------------------------------------------------||
+
+	/// <summary>
+	/// Формирует новый базис.
+	/// </summary>
+	static void NewBasis();
+	
+	/// <summary>
+	/// Находит цепочку
+	/// </summary>
+	/// <returns></returns>
+	static std::vector<int> getChain();
+	
+	/// <summary>
+	/// Проверяет правильность построенного базиса
+	/// </summary>
+	/// <returns></returns>
+	static bool CheckBasis();
+
+	//--------------------------------------------------------------------------------||
+
+	/// <summary>
+	/// Вычисление методом потенциалов
+	/// </summary>
+	static potential FindPotential();
+
+	/// <summary>
+	/// Проверка правильности решения
+	/// true - если текущий базис оптимальный
+	/// </summary>
+	static bool CheckPotential(std::vector<double> &U, std::vector<double> &V);
+	
+	//--------------------------------------------------------------------------------||
+
+};
+
