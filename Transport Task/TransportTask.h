@@ -1,7 +1,11 @@
 #pragma once
 #include "pch.h"
 
-#define potential std::pair<std::vector<double>*, std::vector<double>*> 
+#define potential std::pair<std::vector<double>*, std::vector<double>*>		// U - firts, V - second
+
+//--------------------------------------------------------------------------------||
+
+enum Direction { Non = -1, up, down, left, right };
 
 //--------------------------------------------------------------------------------||
 
@@ -72,6 +76,30 @@ private:
 	/// </summary>
 	static void ReadInput(std::string);
 
+	/// <summary>
+	/// Выводит базис
+	/// </summary>
+	static void PrintBasis() {
+		int i = 0;
+		std::cout << "\n Опорный план: \n";
+		for (auto obj : Basis) {
+			if (i++ != CountProduct) {
+				std::cout << std::setw(8) << obj.getValue();
+			}
+			else {
+				i = 1;
+				std::cout << "\n" << std::setw(8) << obj.getValue();
+			}
+		}
+	}
+	
+	//--------------------------------------------------------------------------------||
+	
+	/// <summary>
+	/// Проверят тип задачи и производит корректировку
+	/// </summary>
+	static void Correction();
+
 	//--------------------------------------------------------------------------------||
 
 	/// <summary>
@@ -98,7 +126,7 @@ private:
 	static std::vector<int> getChain();
 	
 	/// <summary>
-	/// Проверяет правильность построенного базиса
+	/// Проверяет зачение целевой функции по базису.
 	/// </summary>
 	/// <returns></returns>
 	static bool CheckBasis();

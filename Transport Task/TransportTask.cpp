@@ -1,4 +1,4 @@
-#include "pch.h"
+п»ї#include "pch.h"
 #include "TransportTask.h"
 
 //--------------------------------------------------------------------------------||
@@ -17,21 +17,21 @@ void TransportTask::Calc(std::string path) {
 
 	ReadInput(path);
 
-#pragma region --- ВЫВОД ---
+#pragma region --- Р’Р«Р’РћР” Р’РҐРћР”РќР«РҐ Р”РђРќРќР«РҐ ---
 
-	std::cout << "\n Количество пунктов производства: " << CountProduct;
-	std::cout << "\n Количество пунктов потребления: " << CountConsumption;
+	std::cout << "\n РљРѕР»РёС‡РµСЃС‚РІРѕ РїСѓРЅРєС‚РѕРІ РїСЂРѕРёР·РІРѕРґСЃС‚РІР°: " << CountProduct;
+	std::cout << "\n РљРѕР»РёС‡РµСЃС‚РІРѕ РїСѓРЅРєС‚РѕРІ РїРѕС‚СЂРµР±Р»РµРЅРёСЏ: " << CountConsumption;
 
-	std::cout << "\n Объёмы производства в пунктах: \n ";
+	std::cout << "\n РћР±СЉС‘РјС‹ РїСЂРѕРёР·РІРѕРґСЃС‚РІР° РІ РїСѓРЅРєС‚Р°С…: \n ";
 	for (auto obj : LProduction) {
 		std::cout << obj << " ";
 	}
-	std::cout << "\n Объёмы потребления в пунктах: \n ";
+	std::cout << "\n РћР±СЉС‘РјС‹ РїРѕС‚СЂРµР±Р»РµРЅРёСЏ РІ РїСѓРЅРєС‚Р°С…: \n ";
 	for (auto obj : LConsumption) {
 		std::cout << obj << " ";
 	}
 
-	std::cout << "\n Матрица стоимостей выполнения задачи: \n";
+	std::cout << "\n РњР°С‚СЂРёС†Р° СЃС‚РѕРёРјРѕСЃС‚РµР№ РІС‹РїРѕР»РЅРµРЅРёСЏ Р·Р°РґР°С‡Рё: \n";
 	int i = 0;
 	for (auto obj : Basis) {
 		if (i++ != CountProduct) {
@@ -45,36 +45,55 @@ void TransportTask::Calc(std::string path) {
 
 #pragma endregion
 
+	Correction();
+
 	ANWA();
 
-#pragma region --- ВЫВОД ---
+	PrintBasis();
 
-	i = 0;
-	std::cout << "\n Опорный план: \n";
-	for (auto obj : Basis) {
-		if (i++ != CountProduct) {
-			std::cout << std::setw(8) << obj.getValue();
+	CheckBasis();
+	std::cout << "\n РџРѕРёСЃРє РѕРїС‚РёРјР°Р»СЊРЅРѕРіРѕ СЂРµС€РµРЅРёСЏ.";
+
+	int iter = 0, MaxIter = 100;
+	while (iter++ < MaxIter) {
+		std::cout << "\n ===============================================================";
+		std::cout << " РС‚РµСЂР°С†РёСЏ в„–" << iter << " ===";
+		std::cout << "\n Р Р°СЃС‡С‘С‚ РїРѕС‚РµРЅС†РёР°Р»РѕРІ:\n ";
+		potential potent = FindPotential();
+
+#pragma region --- Р’Р«Р’РћР” РџРћРўР•РќР¦РРђР›РћР’ ---
+
+		int i = 0;
+		for (auto x : *potent.first) {
+			std::cout << "U[" << i++ << "] = " << x << '\t';
 		}
-		else {
-			i = 1;
-			std::cout << "\n" << std::setw(8) << obj.getValue();
+		i = 0;
+		std::cout << "\n ";
+		for (auto x : *potent.second) {
+			std::cout << "V[" << i++ << "] = " << x << '\t';
 		}
-	}
 
 #pragma endregion
 
-	CheckBasis();
+		if (!CheckPotential(*potent.first, *potent.second)) {
+			
+			std::cout << "\n РЈСЃР»РѕРІРёРµ РѕРїС‚РёРјР°Р»СЊРЅРѕСЃС‚Рё РЅРµ РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ";
+			std::cout << "\n Р’ Р±Р°Р·РёСЃ РІРІРѕРґРёС‚СЃСЏ X(" << indexPotential / CountProduct << "," << indexPotential % CountConsumption << ")";
 
-	int iter = 1, MaxIter = 100;
-	//while (iter++ <= MaxIter) {
-	potential potent = FindPotential();
+			NewBasis();
 
-	if (!CheckPotential(*potent.first, *potent.second)) {
-		NewBasis();
-		CheckBasis();
+			PrintBasis();
+
+			CheckBasis();
+		}
+		else {
+			std::cout << "\n Р’С‹РїРѕР»РЅРёР»РѕСЃСЊ СѓСЃР»РѕРІРёРµ РѕРїС‚РёРјР°Р»СЊРЅРѕСЃС‚Рё.";
+			break;
+		}
 	}
-	//else break;
-//}
+	std::cout << "\n ==============================================================";
+	std::cout << "\n РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРґРµР»Р°РЅРЅС‹С… С€Р°РіРѕРІ:" << iter;
+	CheckBasis();
 }
 
 //--------------------------------------------------------------------------------||
@@ -85,7 +104,7 @@ void TransportTask::ReadInput(std::string path) {
 	if (ifile.is_open()) {
 		std::string buff;
 
-		std::cout << "\n Считывание входного файла...";
+		std::cout << "\n РЎС‡РёС‚С‹РІР°РЅРёРµ РІС…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р°...";
 
 		while (ifile.eof(), ifile >> buff) {
 			if (buff == "\"production\":") {
@@ -97,7 +116,7 @@ void TransportTask::ReadInput(std::string path) {
 					LProduction.push_back(std::stod(buff));
 					ifile >> buff;
 				}
-				// Добавление последнего элемента
+				// Р”РѕР±Р°РІР»РµРЅРёРµ РїРѕСЃР»РµРґРЅРµРіРѕ СЌР»РµРјРµРЅС‚Р°
 				buff = buff.substr(0, buff.size() - 2);
 				LProduction.push_back(std::stod(buff));
 			}
@@ -113,7 +132,7 @@ void TransportTask::ReadInput(std::string path) {
 					ifile >> buff;
 				}
 
-				// Добавление последнего элемента
+				// Р”РѕР±Р°РІР»РµРЅРёРµ РїРѕСЃР»РµРґРЅРµРіРѕ СЌР»РµРјРµРЅС‚Р°
 				buff = buff.substr(0, buff.size() - 2);
 				LConsumption.push_back(std::stod(buff));
 			}
@@ -127,7 +146,7 @@ void TransportTask::ReadInput(std::string path) {
 						Basis.push_back(cells(nullptr, std::stod(buff)));
 						ifile >> buff;
 					}
-					// Добавление последнего элемента
+					// Р”РѕР±Р°РІР»РµРЅРёРµ РїРѕСЃР»РµРґРЅРµРіРѕ СЌР»РµРјРµРЅС‚Р°
 					buff = buff.substr(0, buff.size() - 2);
 					Basis.push_back(cells(nullptr, std::stod(buff)));
 					ifile >> buff;
@@ -135,16 +154,40 @@ void TransportTask::ReadInput(std::string path) {
 			}
 		}
 
-		std::cout << "\n Считывание входного файла завершено...";
+		std::cout << "\n РЎС‡РёС‚С‹РІР°РЅРёРµ РІС…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° Р·Р°РІРµСЂС€РµРЅРѕ...";
 
 		CountConsumption = LConsumption.size();
 		CountProduct = LProduction.size();
 	}
 	else {
-		std::cout << "\n Не удалось открыть входной файл: " << path;
+		std::cout << "\n РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ РІС…РѕРґРЅРѕР№ С„Р°Р№Р»: " << path;
 	}
 }
 
+//--------------------------------------------------------------------------------||
+
+void TransportTask::Correction() {
+	int sumProd = 0, sumConsum = 0;
+
+	for (auto x : LProduction) {
+		sumProd += x;
+	}
+
+	for (auto x : LConsumption) {
+		sumConsum += x;
+	}
+
+	if (sumConsum == sumProd) {
+		std::cout << "\n Р—Р°РєСЂС‹С‚Р°СЏ С‚СЂР°РЅСЃРїРѕСЂС‚РЅР°СЏ Р·Р°РґР°С‡Р°.";
+	}
+	else if (sumConsum < sumProd) {
+		std::cout << "\n РћС‚РєСЂС‹С‚Р°СЏ С‚СЂР°РЅСЃРїРѕСЂС‚РЅР°СЏ Р·Р°РґР°С‡Р° СЃ РїРµСЂРµРїСЂРѕРёР·РІРѕРґСЃС‚РІРѕРј.";
+	}
+	else if (sumProd < sumConsum) {
+		std::cout << "\n РћС‚РєСЂС‹С‚Р°СЏ С‚СЂР°РЅСЃРїРѕСЂС‚РЅР°СЏ Р·Р°РґР°С‡Р° СЃ РЅРµРґРѕРїСЂРѕРёР·РІРѕРґСЃС‚РІРѕРј.";
+	}
+}
+ 
 //--------------------------------------------------------------------------------||
 
 void TransportTask::ANWA() {
@@ -162,34 +205,35 @@ void TransportTask::ANWA() {
 
 		remains = *locConsum - *locProd;
 
-		// Спрос удовлетворён
+		// РЎРїСЂРѕСЃ СѓРґРѕРІР»РµС‚РІРѕСЂС‘РЅ
 		if (remains <= 0) {
-			obj->setValue(*locProd + remains);		// Сколько ушло от предприятия потребителю.	
+			obj->setValue(*locProd + remains);		// РЎРєРѕР»СЊРєРѕ СѓС€Р»Рѕ РѕС‚ РїСЂРµРґРїСЂРёСЏС‚РёСЏ РїРѕС‚СЂРµР±РёС‚РµР»СЋ.	
 
 			*locProd -= obj->getValue();
 			*locConsum = 0;
 
 			if (remains == 0) {
-				locProd++;							// Переход к некст производству, если ресурсы закончились
+				locProd++;							// РџРµСЂРµС…РѕРґ Рє РЅРµРєСЃС‚ РїСЂРѕРёР·РІРѕРґСЃС‚РІСѓ, РµСЃР»Рё СЂРµСЃСѓСЂСЃС‹ Р·Р°РєРѕРЅС‡РёР»РёСЃСЊ
 				if (obj + 1 != Basis.end()) {
 
-					// Занос фиктивного 0 в матрицу для вычисления потенциалов 
+					// Р—Р°РЅРѕСЃ С„РёРєС‚РёРІРЅРѕРіРѕ 0 РІ РјР°С‚СЂРёС†Сѓ РґР»СЏ РІС‹С‡РёСЃР»РµРЅРёСЏ РїРѕС‚РµРЅС†РёР°Р»РѕРІ 
+					// РґР°Р»СЊС€Рµ РїРµСЂРІРѕРіРѕ СЃС‚РѕР»Р±С†Р°
 					if ((obj + 1 - Basis.begin()) % CountProduct > 0)
 						(obj + 1)->setValue(0);
-					obj += CountConsumption;		// Сдвиг в списке на слой ниже - слой нового потребителя
+					obj += CountConsumption;		// РЎРґРІРёРі РІ СЃРїРёСЃРєРµ РЅР° СЃР»РѕР№ РЅРёР¶Рµ - СЃР»РѕР№ РЅРѕРІРѕРіРѕ РїРѕС‚СЂРµР±РёС‚РµР»СЏ
 				}
 			}
 
 			obj++;
-			locConsum++;							// Переход к некст потребителю
+			locConsum++;							// РџРµСЂРµС…РѕРґ Рє РЅРµРєСЃС‚ РїРѕС‚СЂРµР±РёС‚РµР»СЋ
 		}
 
-		// Спрос не удовлетворён
+		// РЎРїСЂРѕСЃ РЅРµ СѓРґРѕРІР»РµС‚РІРѕСЂС‘РЅ
 		else {
-			obj->setValue(*locProd);				// Сколько ушло от предприятия потребителю.
+			obj->setValue(*locProd);				// РЎРєРѕР»СЊРєРѕ СѓС€Р»Рѕ РѕС‚ РїСЂРµРґРїСЂРёСЏС‚РёСЏ РїРѕС‚СЂРµР±РёС‚РµР»СЋ.
 			*locConsum -= *locProd;
 			*locProd = 0; locProd++;
-			obj += CountConsumption;				// Сдвиг в списке на слой ниже - слой нового потребителя
+			obj += CountConsumption;				// РЎРґРІРёРі РІ СЃРїРёСЃРєРµ РЅР° СЃР»РѕР№ РЅРёР¶Рµ - СЃР»РѕР№ РЅРѕРІРѕРіРѕ РїРѕС‚СЂРµР±РёС‚РµР»СЏ
 		}
 	}
 }
@@ -212,200 +256,297 @@ bool contains(std::vector<T> vec, T value) {
 
 //--------------------------------------------------------------------------------||
 
-// Запоминать для каждой строки и столбца сколько у него уже встречено вершин
+// Р—Р°РїРѕРјРёРЅР°С‚СЊ РґР»СЏ РєР°Р¶РґРѕР№ СЃС‚СЂРѕРєРё Рё СЃС‚РѕР»Р±С†Р° СЃРєРѕР»СЊРєРѕ Сѓ РЅРµРіРѕ СѓР¶Рµ РІСЃС‚СЂРµС‡РµРЅРѕ РІРµСЂС€РёРЅ
 void TransportTask::NewBasis() {
 
 	std::vector<int> chain = getChain();
 
-	// Находить минимальный элемент и осуществить сдвиг по цепочке
+	std::cout << "\n Р¦РµРїРѕС‡РєР°:\n ";
+	for (int x : chain) {
+		std::cout << "(" << x / CountProduct << ", " << x % CountProduct << ")";
+	}
+
+#pragma region --- РџРѕРёСЃРє РјРёРЅРёРјР°Р»СЊРЅРѕРіРѕ СЌР»РµРјРµРЅС‚Р° Рё СЃРґРІРёРі РїРѕ С†РµРїРѕС‡РєРµ ---
+
+	int min = INT32_MAX;
+
+	for (auto cell = chain.begin() + 1; cell != chain.end(); cell++) {
+		min = (min > Basis[*cell].getValue()) ? Basis[*cell].getValue() : min;
+	}
+
+	bool isFirts = false;
+	for (int i = 0; i < chain.size(); i++) {
+		Basis[chain[i]].setValue((i % 2 > 0) ? Basis[chain[i]].getValue() - min : Basis[chain[i]].getValue() + min);
+		if (!isFirts && *Basis[chain[i]].Value == 0 && chain[i] != indexPotential) {
+			std::cout << "\n РР· Р±Р°Р·РёСЃР° РІС‹РІРѕРґРёС‚СЃСЏ СЌР»РµРјРµРЅС‚ X(" << chain[i] / CountProduct << "," << chain[i] % CountConsumption << ") = " << min;
+			delete Basis[chain[i]].Value;
+			Basis[chain[i]].Value = nullptr;
+			isFirts = true;
+		}
+	}
+
+#pragma endregion	
 
 }
 
 std::vector<int> TransportTask::getChain() {
+
+	std::cout << "\n РџРѕРёСЃРє С†РµРїРѕС‡РєРё.";
+
 	auto locBasis(Basis);
 
-	// ВОТ ТУТ ЖОПА
-	std::vector<int> Chain;			// Список индексов из цепочки
-	std::stack<int> state;			// Стек состояний
+	// Р’РћРў РўРЈРў Р–РћРџРђ
+	std::vector<int> Chain;							// РЎРїРёСЃРѕРє РёРЅРґРµРєСЃРѕРІ РёР· С†РµРїРѕС‡РєРё
+	std::stack<std::array<int, 4>> state;			// РЎС‚РµРє СЃРѕСЃС‚РѕСЏРЅРёР№
 
 	Chain.push_back(indexPotential);
 
 	int i = indexPotential;
-	int direction = 0;
 	bool isChain = false;
 
+	Direction fromDir = Non;
+
 	int row = i / CountConsumption;
+	int rowIter = 0;
 	int column = i % CountConsumption;
+	int columnIter = 0;
+
+	int counterIter = 0;
+	// Р’РµРєС‚РѕСЂ СЃ Р±Р°Р·РёСЃРЅС‹РјРё РёРЅРґРµРєСЃР°РјРё РІ СЂР°Р·Р»РёС‡РЅС‹С… РЅР°РїСЂР°РІР»РµРЅРёСЏС…
+	std::array<int, 4> ListDir{-1, -1, -1, -1};
 
 	/// <summary>
-	/// Цикл поиска цепочек
+	/// Р¦РёРєР» РїРµСЂРµС…РѕРґР° Рє РЅРѕРІРѕР№ Р±Р°Р·РёСЃРЅРѕР№ СЏС‡РµР№РєРµ
 	/// </summary>
-	while (!isChain) {
+	while (!isChain && counterIter < CountConsumption * CountConsumption) {
+		counterIter++;
 
-		// Улучшить скорость нахождения цепочек - ввести список ячеек при сканировании всех направлений и 
-		// проверять его на добавляемый базис, иначе переходить вглубь на одну из них(почти тоже самое)
-		// Добавить проверку на не более двуъ вершин в строке и столбце, что ещё раз позволит скипать шаги.
+		column = i % CountConsumption;
+		row = i / CountConsumption;
 
+		// РЈР»СѓС‡С€РёС‚СЊ СЃРєРѕСЂРѕСЃС‚СЊ РЅР°С…РѕР¶РґРµРЅРёСЏ С†РµРїРѕС‡РµРє - РІРІРµСЃС‚Рё СЃРїРёСЃРѕРє СЏС‡РµРµРє РїСЂРё СЃРєР°РЅРёСЂРѕРІР°РЅРёРё РІСЃРµС… РЅР°РїСЂР°РІР»РµРЅРёР№ Рё		++
+		// РїСЂРѕРІРµСЂСЏС‚СЊ РµРіРѕ РЅР° РґРѕР±Р°РІР»СЏРµРјС‹Р№ Р±Р°Р·РёСЃ, РёРЅР°С‡Рµ РїРµСЂРµС…РѕРґРёС‚СЊ РІРіР»СѓР±СЊ РЅР° РѕРґРЅСѓ РёР· РЅРёС…(РїРѕС‡С‚Рё С‚РѕР¶Рµ СЃР°РјРѕРµ)			++
+		// Р”РѕР±Р°РІРёС‚СЊ РїСЂРѕРІРµСЂРєСѓ РЅР° РЅРµ Р±РѕР»РµРµ РґРІСѓС… РІРµСЂС€РёРЅ РІ СЃС‚СЂРѕРєРµ Рё СЃС‚РѕР»Р±С†Рµ, С‡С‚Рѕ РµС‰С‘ СЂР°Р· РїРѕР·РІРѕР»РёС‚ СЃРєРёРїР°С‚СЊ С€Р°РіРё.
 
-		// Цикл обхода всех направлений
-		while (direction != 4) {			// Зменить на обычный цикл до 4 раз
+		// РћР±С…РѕРґ РІРІРµСЂС…
+		if(fromDir != up){
+			bool isBasis = false;
+			int ii = i - CountConsumption;			// Р’СЂРµРјРµРЅРЅС‹Р№ РёС‚РµСЂР°С‚РѕСЂ РїРѕ СЃС‚РѕР»Р±С†Сѓ
+			columnIter = ii % CountConsumption;
 
-			// Обход вверх
-			if (direction == 0) {
+			// РџРѕРєР° РЅРµ РґРѕСЃС‚РёРіРЅСѓС‚ РїРѕС‚РѕР»РѕРє
+			while (columnIter == column && ii >= 0) {
+				// РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РёСЃРєР»СЋС‡Р°РµС‚СЃСЏ СЃР»СѓС‡Р°Р№ С…РѕР¶РґРµРЅРёСЏ РІ РѕР±СЂР°С‚РЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё Р±Р»Р°РіРѕРґР°СЂСЏ contains
+				if (contains(Chain, ii))
+					break;
 
-				bool isBasis = false;
-				int ii = i - CountConsumption;
-				row = ii / CountConsumption;
-
-				// Пока не достигнут потолок
-				while (row >= 0 && ii >= 0) {
-					// Автоматически исключается случай хождения в обратном направлении благодаря contains
-					if (contains(Chain, ii))
-						break;
-
-					isChain = ii == indexPotential;
-					// Если встречена базисная переменная.					
-					if (locBasis[ii].Value != nullptr || isChain) {
-						isBasis = true;
-						break;
-					}
-
-					ii -= CountConsumption;				// Шаг по матрице вверх
-					row = ii / CountConsumption;
-				}
-
-				// Если базис был встречен
-				if (isBasis) {
-					i = ii;
-					state.push(direction);
-					direction = 0;		// сброс направлений
+				isChain = ii == indexPotential;
+				// Р•СЃР»Рё РІСЃС‚СЂРµС‡РµРЅР° Р±Р°Р·РёСЃРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ.					
+				if (locBasis[ii].Value != nullptr || isChain) {
+					isBasis = true;
 					break;
 				}
-				else {
-					direction = 1;		// отметка направления.
-				}
+
+				ii -= CountConsumption;				// РЁР°Рі РїРѕ РјР°С‚СЂРёС†Рµ РІРІРµСЂС…
+				rowIter = ii / CountConsumption;
+				columnIter = ii % CountConsumption;
 			}
 
-			// Обход вниз
-			else if (direction == 3) {
-
-				bool isBasis = false;
-				int ii = i + CountConsumption;
-				row = ii / CountConsumption;
-
-				// Пока не достигнут пол
-				while (row < CountProduct && ii < locBasis.size()) {
-					// Автоматически исключается случай хождения в обратном направлении благодаря contains
-					if (contains(Chain, ii))
-						break;
-
-					isChain = ii == indexPotential;
-					// Если встречена базисная переменная.
-					if (locBasis[ii].Value != nullptr || isChain) {
-						isBasis = true;
-						break;
-					}
-
-					ii += CountConsumption;				// Шаг по матрице вверх
-					row = ii / CountConsumption;
-				}
-
-				// Если базис был встречен
-				if (isBasis) {
-					i = ii;
-					state.push(direction);
-					direction = 0;		// сброс направлений
+			// Р•СЃР»Рё Р±Р°Р·РёСЃ Р±С‹Р» РІСЃС‚СЂРµС‡РµРЅ
+			if (isBasis) {
+				if (isChain) {
+					i = ii;				// Р¦РµРїРѕС‡РєР° РЅР°Р№РґРµРЅР° - РѕСЃС‚Р°РЅРѕРІРєР° РїРѕРёСЃРєРѕРІ
 					break;
 				}
 				else {
-					direction++;		// отметка направления.
-				}
-			}
-
-			// Обход влево
-			else if (direction == 2) {
-
-				bool isBasis = false;
-				int ii = i - 1;
-				column = ii % CountConsumption;
-
-				// Пока не достигнута левая границы
-				while (column >= 0 && ii >= 0) {
-					// Автоматически исключается случай хождения в обратном направлении благодаря contains
-					if (contains(Chain, ii))
-						break;
-					isChain = ii == indexPotential;
-					// Если встречена базисная переменная.
-					if (locBasis[ii].Value != nullptr || isChain) {
-						isBasis = true;
-						break;
-					}
-
-					ii--;				// Шаг по матрице вверх
-					column = ii % CountConsumption;
-				}
-
-				// Если базис был встречен
-				if (isBasis) {
-					i = ii;
-					state.push(direction);
-					direction = 0;		// сброс направлений
-					break;
-				}
-				else {
-					direction++;		// отметка направления.
-				}
-			}
-
-			// Обход вправо
-			else if (direction == 1) {
-				bool isBasis = false;
-				int ii = i + 1;
-				column = ii % CountConsumption;
-
-				// Пока не достигнута левая границы
-				while (column < CountConsumption && ii < locBasis.size()) {
-					// Автоматически исключается случай хождения в обратном направлении благодаря contains
-					if (contains(Chain, ii))
-						break;
-
-					isChain = ii == indexPotential;
-					// Если встречена базисная переменная.
-					if (locBasis[ii].Value != nullptr || isChain) {
-						isBasis = true;
-						break;
-					}
-
-					ii++;				// Шаг по матрице вверх
-					column = ii % CountConsumption;
-				}
-
-				// Если базис был встречен
-				if (isBasis) {
-					i = ii;
-					state.push(direction);
-					direction = 0;		// сброс направлений
-					break;
-				}
-				else {
-					direction++;		// отметка направления.
+					ListDir[up] = ii;	// Р’ РЅР°РїСЂР°РІР»РµРЅРёРё РІРІРµСЂС… Р·Р°РїРёСЃС‹РІР°РµРј РёРЅРґРµРєСЃ СЃР»РµРґСѓСЋС‰РµРіРѕ С€Р°РіР°					
 				}
 			}
 		}
 
-		if (direction != 4) {
-			Chain.push_back(i);
+		// РћР±С…РѕРґ РІРЅРёР·
+		if(fromDir != down){
+			bool isBasis = false;
+			int ii = i + CountConsumption;			// Р’СЂРµРјРµРЅРЅС‹Р№ РёС‚РµСЂР°С‚РѕСЂ РїРѕ СЃС‚РѕР»Р±С†Сѓ
+			columnIter = ii % CountConsumption;
+
+			// РџРѕРєР° РЅРµ РґРѕСЃС‚РёРіРЅСѓС‚ РїРѕР»
+			while (columnIter == column && ii < locBasis.size()) {
+				// РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РёСЃРєР»СЋС‡Р°РµС‚СЃСЏ СЃР»СѓС‡Р°Р№ С…РѕР¶РґРµРЅРёСЏ РІ РѕР±СЂР°С‚РЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё Р±Р»Р°РіРѕРґР°СЂСЏ contains
+				if (contains(Chain, ii))
+					break;
+
+				isChain = ii == indexPotential;
+				// Р•СЃР»Рё РІСЃС‚СЂРµС‡РµРЅР° Р±Р°Р·РёСЃРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ.
+				if (locBasis[ii].Value != nullptr || isChain) {
+					isBasis = true;
+					break;
+				}
+
+				ii += CountConsumption;				// РЁР°Рі РїРѕ РјР°С‚СЂРёС†Рµ РІРІРµСЂС…
+				rowIter = ii / CountConsumption;
+				columnIter = ii % CountConsumption;
+			}
+
+			// Р•СЃР»Рё Р±Р°Р·РёСЃ Р±С‹Р» РІСЃС‚СЂРµС‡РµРЅ
+			if (isBasis) {
+				if (isChain) {
+					i = ii;				// Р¦РµРїРѕС‡РєР° РЅР°Р№РґРµРЅР° - РѕСЃС‚Р°РЅРѕРІРєР° РїРѕРёСЃРєРѕРІ
+					break;
+				}
+				else {
+					ListDir[down] = ii;	// Р’ РЅР°РїСЂР°РІР»РµРЅРёРё РІРІРµСЂС… Р·Р°РїРёСЃС‹РІР°РµРј РёРЅРґРµРєСЃ СЃР»РµРґСѓСЋС‰РµРіРѕ С€Р°РіР°					
+				}
+			}
 		}
+
+		// РћР±С…РѕРґ РІР»РµРІРѕ
+		if(fromDir != left){
+			bool isBasis = false;
+			int ii = i - 1;							// Р’СЂРµРјРµРЅРЅС‹Р№ РёС‚РµСЂР°С‚РѕСЂ РїРѕ СЃС‚СЂРѕРєРµ			
+			rowIter = ii / CountConsumption;
+
+			// РџРѕРєР° РЅРµ РґРѕСЃС‚РёРіРЅСѓС‚Р° Р»РµРІР°СЏ РіСЂР°РЅРёС†С‹
+			while (rowIter == row && ii >= 0) {
+				// РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РёСЃРєР»СЋС‡Р°РµС‚СЃСЏ СЃР»СѓС‡Р°Р№ С…РѕР¶РґРµРЅРёСЏ РІ РѕР±СЂР°С‚РЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё Р±Р»Р°РіРѕРґР°СЂСЏ contains
+				if (contains(Chain, ii))
+					break;
+				isChain = ii == indexPotential;
+				// Р•СЃР»Рё РІСЃС‚СЂРµС‡РµРЅР° Р±Р°Р·РёСЃРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ.
+				if (locBasis[ii].Value != nullptr || isChain) {
+					isBasis = true;
+					break;
+				}
+
+				ii--;				// РЁР°Рі РїРѕ РјР°С‚СЂРёС†Рµ РІРІРµСЂС…
+				columnIter = ii % CountConsumption;
+				rowIter = ii / CountConsumption;
+			}
+
+			// Р•СЃР»Рё Р±Р°Р·РёСЃ Р±С‹Р» РІСЃС‚СЂРµС‡РµРЅ
+			if (isBasis) {
+				if (isChain) {
+					i = ii;				// Р¦РµРїРѕС‡РєР° РЅР°Р№РґРµРЅР° - РѕСЃС‚Р°РЅРѕРІРєР° РїРѕРёСЃРєРѕРІ
+					break;
+				}
+				else {
+					ListDir[left] = ii;	// Р’ РЅР°РїСЂР°РІР»РµРЅРёРё РІРІРµСЂС… Р·Р°РїРёСЃС‹РІР°РµРј РёРЅРґРµРєСЃ СЃР»РµРґСѓСЋС‰РµРіРѕ С€Р°РіР°					
+				}
+			}
+		}
+
+		// РћР±С…РѕРґ РІРїСЂР°РІРѕ
+		if(fromDir != right){
+			bool isBasis = false;
+         	int ii = i + 1;							// Р’СЂРµРјРµРЅРЅС‹Р№ РёС‚РµСЂР°С‚РѕСЂ РїРѕ СЃС‚СЂРѕРєРµ
+			rowIter = ii / CountConsumption;
+			
+			// РџРѕРєР° РЅРµ РґРѕСЃС‚РёРіРЅСѓС‚Р° Р»РµРІР°СЏ РіСЂР°РЅРёС†С‹
+			while (rowIter == row && ii < locBasis.size()) {
+				// РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РёСЃРєР»СЋС‡Р°РµС‚СЃСЏ СЃР»СѓС‡Р°Р№ С…РѕР¶РґРµРЅРёСЏ РІ РѕР±СЂР°С‚РЅРѕРј РЅР°РїСЂР°РІР»РµРЅРёРё Р±Р»Р°РіРѕРґР°СЂСЏ contains
+				if (contains(Chain, ii))
+					break;
+
+				isChain = ii == indexPotential;
+				// Р•СЃР»Рё РІСЃС‚СЂРµС‡РµРЅР° Р±Р°Р·РёСЃРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ.
+				if (locBasis[ii].Value != nullptr || isChain) {
+					isBasis = true;
+					break;
+				}
+
+				ii++;				// РЁР°Рі РїРѕ РјР°С‚СЂРёС†Рµ РІРІРµСЂС…
+				columnIter = ii % CountConsumption;
+				rowIter = ii / CountConsumption;
+			}
+
+			// Р•СЃР»Рё Р±Р°Р·РёСЃ Р±С‹Р» РІСЃС‚СЂРµС‡РµРЅ
+			if (isBasis) {
+				if (isChain) {
+					i = ii;				// Р¦РµРїРѕС‡РєР° РЅР°Р№РґРµРЅР° - РѕСЃС‚Р°РЅРѕРІРєР° РїРѕРёСЃРєРѕРІ
+					break;
+				}
+				else {
+					ListDir[right] = ii;	// Р’ РЅР°РїСЂР°РІР»РµРЅРёРё РІРІРµСЂС… Р·Р°РїРёСЃС‹РІР°РµРј РёРЅРґРµРєСЃ СЃР»РµРґСѓСЋС‰РµРіРѕ С€Р°РіР°					
+				}
+			}
+		}
+
+
+		// Р•СЃР»Рё С†РµРїРѕС‡РєР° РЅРµ РЅР°Р№РґРµРЅР° - РЅРѕ РµСЃС‚СЊ РєСѓРґР° С…РѕРґРёС‚СЊ
+		if (ListDir[0] != -1 || ListDir[1] != -1 || ListDir[2] != -1 || ListDir[3] != -1) {
+
+			Direction j = up;
+			while (j < 4) {
+				if (ListDir[j] != -1) {
+					Chain.push_back(ListDir[j]);
+					i = ListDir[j];
+					ListDir[j] = -1;	// РћС‚РјРµС‡Р°РµС‚СЃСЏ РЅР°РїСЂР°РІР»РµРЅРёРµ, РІ РєРѕС‚РѕСЂРѕРј Р±СѓРґРµС‚ С€Р°Рі
+					break;
+				}
+				j = (Direction)(j + 1);
+			}
+			
+			// РљРѕСЃС‚С‹Р»Рё
+			// РќР° СЃР»РµРґСѓСЋС‰СѓСЋ РёС‚РµСЂР°С†РёСЋ Р±Р»РѕРєРёСЂСѓРµС‚СЃСЏ С…РѕРґ РЅР°Р·Р°Рґ.
+			switch (j)
+			{
+			case up:
+				fromDir = down;
+				break;
+			case down:
+				fromDir = up;
+				break;
+			case left:
+				fromDir = right;
+				break;
+			case right:
+				fromDir = left;
+				break;
+			default:
+				break;
+			}
+
+			state.push(ListDir);
+
+			ListDir = { -1, -1, -1, -1 };
+		}
+
+		// Р•СЃР»Рё РІСЃРµ РїСѓС‚Рё РїСЂРѕР№РґРµРЅС‹ - С€Р°Рі РЅР°Р·Р°Рґ
 		else {
-			delete locBasis[i].Value;
+			//delete locBasis[i].Value;
 			locBasis[i].Value = nullptr;
-			Chain.pop_back();			// Удаление из цепочки
-			state.pop();
-			direction = state.top();	// Возврат предыдущего состояния обхода.
+
+			Chain.pop_back();			// РЈРґР°Р»РµРЅРёРµ РёР· С†РµРїРѕС‡РєРё
 			i = Chain.back();
+
+			state.pop();
+			ListDir[up] = state.top()[up];			// Р’РѕР·РІСЂР°С‚ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ РѕР±С…РѕРґР°.
+			ListDir[down] = state.top()[down];		// Р’РѕР·РІСЂР°С‚ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ РѕР±С…РѕРґР°.
+			ListDir[left] = state.top()[left];		// Р’РѕР·РІСЂР°С‚ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ РѕР±С…РѕРґР°.
+			ListDir[right] = state.top()[right];	// Р’РѕР·РІСЂР°С‚ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ РѕР±С…РѕРґР°.
 		}
 	}
-	Chain.pop_back();			// Удаление дубля индекса добавления базисной переменной.
+	//Chain.pop_back();			// РЈРґР°Р»РµРЅРёРµ РґСѓР±Р»СЏ РёРЅРґРµРєСЃР° РґРѕР±Р°РІР»РµРЅРёСЏ Р±Р°Р·РёСЃРЅРѕР№ РїРµСЂРµРјРµРЅРЅРѕР№.
+
+	std::vector<int> newChain;
+	newChain.push_back(Chain[0]);
+	newChain.push_back(Chain[1]);
+
+	for (int i = 2; i < Chain.size(); i++) {
+		if (Chain[i - 1] % CountProduct == Chain[i] % CountProduct &&
+			Chain[i - 2] % CountProduct == Chain[i] % CountProduct) {
+			newChain[newChain.size() - 1] = Chain[i];			// РџРµСЂРµР·Р°РїРёСЃСЊ РґСѓР±Р»СЏ			
+		}
+		else {
+			newChain.push_back(Chain[i]);
+		}
+	}
+
+	Chain = newChain;
+
+	std::cout << "\n Р¦РµРїРѕС‡РєР° РЅР°Р№РґРµРЅР° Р·Р° " << counterIter << " С€Р°РіРѕРІ.";
+
+	return Chain;
 }
 
 bool TransportTask::CheckBasis() {
@@ -413,7 +554,7 @@ bool TransportTask::CheckBasis() {
 	for (auto obj : Basis) {
 		ansrew += obj.Cost * obj.getValue();
 	}
-	std::cout << "\n Значение функции: " << ansrew;
+	std::cout << "\n Р—РЅР°С‡РµРЅРёРµ С†РµР»РµРІРѕР№ С„СѓРЅРєС†РёРё: " << ansrew;
 	return 0;
 }
 
@@ -436,6 +577,7 @@ potential TransportTask::FindPotential() {
 
 	int iter = 0;
 	while (iter < Basis.size()) {
+		// РџСЂРѕР±Р»РµРјР° РЅР° РёС‚РµСЂР°С†РёРё 2 - РїСЂРѕРїР°РґР°РµС‚ СЃРІСЏР·РЅ
 		if (Basis[iter].Value != nullptr) {
 
 			int a = iter / CountProduct;
@@ -449,6 +591,17 @@ potential TransportTask::FindPotential() {
 				iter++;
 			}
 			else if (*v == LONG_MAX && *u != LONG_MAX) {
+				*v = Basis[iter].Cost - *u;
+				iter++;
+			}
+			else if (*u != LONG_MAX && *v != LONG_MAX) {
+				if (iter + CountConsumption < Basis.size())
+					iter += CountConsumption;	// РџРµСЂРµС…РѕРґ РЅР° РЅРµРєСЃС‚ СЃС‚СЂРѕРєСѓ
+				else
+					iter++;
+			}
+			else {
+				*u = 0;
 				*v = Basis[iter].Cost - *u;
 				iter++;
 			}
@@ -468,7 +621,9 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 
 	double min = LONG_MAX;
 	int iterMin;
-	std::set<double> set;
+	//std::set<double> set;
+
+	std::cout << "\n РћС†РµРЅРєРё СЃРІРѕР±РѕРґРЅС‹С… РїРµСЂРµРјРµРЅРЅС‹С…:\n ";
 
 	while (iter < Basis.size()) {
 		if (Basis[iter].Value == nullptr) {
@@ -480,14 +635,19 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 				iterMin = iter;
 				min = Basis[iter].Cost - *u - *v;
 			}
+			std::cout << "О”C[" << iter / CountProduct << "," << iter % CountConsumption << "] = " << Basis[iter].Cost - *u - *v << "\n ";
 			iter++;
 		}
 		else
 			iter++;
 	}
 
+	delete & U;
+	delete & V;
+
+
 	indexPotential = iterMin;
-	// Если все оценки положительны - базис оптимален.
+	// Р•СЃР»Рё РІСЃРµ РѕС†РµРЅРєРё РїРѕР»РѕР¶РёС‚РµР»СЊРЅС‹ - Р±Р°Р·РёСЃ РѕРїС‚РёРјР°Р»РµРЅ.
 	return min >= 0;
 }
 

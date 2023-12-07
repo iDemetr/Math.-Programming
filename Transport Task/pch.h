@@ -18,6 +18,7 @@
 #include <iomanip>
 
 #include <vector>
+#include <array>
 #include <stack>
 #include <tuple>
 #include <set>
