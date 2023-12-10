@@ -56,6 +56,10 @@ private:
 	/// Список потребителей.
 	/// </summary>
 	static std::vector<double> LConsumption;
+	/// <summary>
+	/// Список штрафов
+	/// </summary>
+	static std::vector<double> LPenalty;
 
 	/// <summary>
 	/// Базис.
@@ -79,26 +83,19 @@ private:
 	/// <summary>
 	/// Выводит базис
 	/// </summary>
-	static void PrintBasis() {
-		int i = 0;
-		std::cout << "\n Опорный план: \n";
-		for (auto obj : Basis) {
-			if (i++ != CountProduct) {
-				std::cout << std::setw(8) << obj.getValue();
-			}
-			else {
-				i = 1;
-				std::cout << "\n" << std::setw(8) << obj.getValue();
-			}
-		}
-	}
+	static void PrintBasis();
+
+	/// <summary>
+	/// Выводит входные данные
+	/// </summary>
+	static void PrintInputs();
 	
 	//--------------------------------------------------------------------------------||
 	
 	/// <summary>
 	/// Проверят тип задачи и производит корректировку
 	/// </summary>
-	static void Correction();
+	static bool Correction();
 
 	//--------------------------------------------------------------------------------||
 

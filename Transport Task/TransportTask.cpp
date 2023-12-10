@@ -6,6 +6,7 @@
 std::vector<cells> TransportTask::Basis;
 std::vector<double> TransportTask::LProduction;
 std::vector<double> TransportTask::LConsumption;
+std::vector<double> TransportTask::LPenalty;
 
 int TransportTask::CountProduct = 0;
 int TransportTask::CountConsumption = 0;
@@ -17,35 +18,11 @@ void TransportTask::Calc(std::string path) {
 
 	ReadInput(path);
 
-#pragma region --- ВЫВОД ВХОДНЫХ ДАННЫХ ---
+	PrintInputs();
 
-	std::cout << "\n Количество пунктов производства: " << CountProduct;
-	std::cout << "\n Количество пунктов потребления: " << CountConsumption;
-
-	std::cout << "\n Объёмы производства в пунктах: \n ";
-	for (auto obj : LProduction) {
-		std::cout << obj << " ";
+	if (Correction()) {
+		PrintInputs();
 	}
-	std::cout << "\n Объёмы потребления в пунктах: \n ";
-	for (auto obj : LConsumption) {
-		std::cout << obj << " ";
-	}
-
-	std::cout << "\n Матрица стоимостей выполнения задачи: \n";
-	int i = 0;
-	for (auto obj : Basis) {
-		if (i++ != CountProduct) {
-			std::cout << std::setw(8) << obj.Cost;
-		}
-		else {
-			i = 1;
-			std::cout << "\n" << std::setw(8) << obj.Cost;
-		}
-	}
-
-#pragma endregion
-
-	Correction();
 
 	ANWA();
 
@@ -65,20 +42,20 @@ void TransportTask::Calc(std::string path) {
 
 		int i = 0;
 		for (auto x : *potent.first) {
-			std::cout << "U[" << i++ << "] = " << x << '\t';
+			std::cout << "U[" << ++i << "] = " << x << '\t';
 		}
 		i = 0;
 		std::cout << "\n ";
 		for (auto x : *potent.second) {
-			std::cout << "V[" << i++ << "] = " << x << '\t';
+			std::cout << "V[" << ++i << "] = " << x << '\t';
 		}
 
 #pragma endregion
 
 		if (!CheckPotential(*potent.first, *potent.second)) {
-			
+
 			std::cout << "\n Условие оптимальности не выполняется";
-			std::cout << "\n В базис вводится X(" << indexPotential / CountProduct << "," << indexPotential % CountConsumption << ")";
+			std::cout << "\n В базис вводится X(" << indexPotential / CountConsumption << "," << indexPotential % CountConsumption << ")";
 
 			NewBasis();
 
@@ -152,6 +129,20 @@ void TransportTask::ReadInput(std::string path) {
 					ifile >> buff;
 				}
 			}
+			
+			else if (buff == "\"add_cost\":") {
+				ifile >> buff;
+
+				buff = buff.substr(1, buff.size());
+				while (buff.rfind(']') == -1) {
+					buff = buff.substr(0, buff.size() - 1);
+					LPenalty.push_back(std::stod(buff));
+					ifile >> buff;
+				}
+				// Добавление последнего элемента
+				buff = buff.substr(0, buff.size() - 2);
+				LPenalty.push_back(std::stod(buff));
+			}
 		}
 
 		std::cout << "\n Считывание входного файла завершено...";
@@ -164,9 +155,49 @@ void TransportTask::ReadInput(std::string path) {
 	}
 }
 
+void TransportTask::PrintBasis() {
+	int i = 0;
+	std::cout << "\n Опорный план: \n";
+	for (auto obj : Basis) {
+		if (i++ != CountConsumption) {
+			std::cout << std::setw(8) << obj.getValue();
+		}
+		else {
+			i = 1;
+			std::cout << "\n" << std::setw(8) << obj.getValue();
+		}
+	}
+}
+
+void TransportTask::PrintInputs() {
+
+	std::cout << "\n Количество пунктов производства: " << CountProduct;
+	std::cout << "\n Количество пунктов потребления: " << CountConsumption;
+
+	std::cout << "\n Объёмы производства в пунктах: \n ";
+	for (auto obj : LProduction) {
+		std::cout << obj << " ";
+	}
+	std::cout << "\n Объёмы потребления в пунктах: \n ";
+	for (auto obj : LConsumption) {
+		std::cout << obj << " ";
+	}
+
+	std::cout << "\n Матрица стоимостей выполнения задачи: \n";
+	int i = 0;
+	for (auto obj : Basis) {
+		if (i++ != CountConsumption) {
+			std::cout << std::setw(8) << obj.Cost;
+		}
+		else {
+			i = 1;
+			std::cout << "\n" << std::setw(8) << obj.Cost;
+		}
+	}
+}
 //--------------------------------------------------------------------------------||
 
-void TransportTask::Correction() {
+bool TransportTask::Correction() {
 	int sumProd = 0, sumConsum = 0;
 
 	for (auto x : LProduction) {
@@ -179,15 +210,62 @@ void TransportTask::Correction() {
 
 	if (sumConsum == sumProd) {
 		std::cout << "\n Закрытая транспортная задача.";
+		return false;
 	}
+	
 	else if (sumConsum < sumProd) {
 		std::cout << "\n Открытая транспортная задача с перепроизводством.";
+
+		CountConsumption++;
+		std::vector<cells> locBasis;
+
+		if (LPenalty.size() != 0) {
+			auto iPenalty = LPenalty.begin();
+
+			int i = 0;
+			for (auto x : Basis) {
+				if (i % CountConsumption != CountConsumption)
+					locBasis.push_back(x);
+				else {
+					locBasis.push_back(cells(nullptr, *iPenalty));
+					iPenalty++;
+				}
+			}
+		}
+		else {
+			int i = 0;
+			for (auto x : Basis) {
+				if (i % CountConsumption != CountConsumption)
+					locBasis.push_back(x);
+				else {
+					locBasis.push_back(cells(nullptr, 0));
+				}
+			}
+		}
+
+		LConsumption.push_back(sumProd - sumConsum);
+		Basis = locBasis;
 	}
+	
 	else if (sumProd < sumConsum) {
 		std::cout << "\n Открытая транспортная задача с недопроизводством.";
+		if (LPenalty.size() != 0) {
+			for (auto x : LPenalty) {
+				Basis.push_back(cells(nullptr, x));
+			}
+		}
+		else {
+			for (int i = 0; i < CountConsumption; i++)
+				Basis.push_back(cells(nullptr, 0));				// Заполнение стоимости нулями, если нет штрафов
+		}
+
+		CountProduct++;
+		LProduction.push_back(sumConsum - sumProd);
 	}
+
+	return true;
 }
- 
+
 //--------------------------------------------------------------------------------||
 
 void TransportTask::ANWA() {
@@ -214,12 +292,12 @@ void TransportTask::ANWA() {
 
 			if (remains == 0) {
 				locProd++;							// Переход к некст производству, если ресурсы закончились
-				if (obj + 1 != Basis.end()) {
+				if ((obj - Basis.begin()) / CountConsumption < CountConsumption - 1) {
 
+					
 					// Занос фиктивного 0 в матрицу для вычисления потенциалов 
-					// дальше первого столбца
-					if ((obj + 1 - Basis.begin()) % CountProduct > 0)
-						(obj + 1)->setValue(0);
+					if (((obj+1) - Basis.begin()) % CountConsumption >= 0)
+						(obj+1)->setValue(0);
 					obj += CountConsumption;		// Сдвиг в списке на слой ниже - слой нового потребителя
 				}
 			}
@@ -233,7 +311,7 @@ void TransportTask::ANWA() {
 			obj->setValue(*locProd);				// Сколько ушло от предприятия потребителю.
 			*locConsum -= *locProd;
 			*locProd = 0; locProd++;
-			obj += CountConsumption;				// Сдвиг в списке на слой ниже - слой нового потребителя
+			obj += CountConsumption;				// Сдвиг в списке на слой ниже - слой нового поставщика
 		}
 	}
 }
@@ -263,26 +341,36 @@ void TransportTask::NewBasis() {
 
 	std::cout << "\n Цепочка:\n ";
 	for (int x : chain) {
-		std::cout << "(" << x / CountProduct << ", " << x % CountProduct << ")";
+		std::cout << "(" << x / CountConsumption + 1 << ", " << x % CountConsumption + 1 << ")";
 	}
 
 #pragma region --- Поиск минимального элемента и сдвиг по цепочке ---
 
 	int min = INT32_MAX;
+	int indexMin = CountConsumption * CountProduct;
 
-	for (auto cell = chain.begin() + 1; cell != chain.end(); cell++) {
-		min = (min > Basis[*cell].getValue()) ? Basis[*cell].getValue() : min;
+	// Поиск минимального элемента в цепочке
+	int i = 0;
+	for (auto cell = (chain.begin()); cell != chain.end(); cell++, i++) {
+		// Если элемент в цепочке нечётный - и меньше минимального
+		if (i % 2 > 0 && (min > Basis[*cell].getValue())) {
+			min = Basis[*cell].getValue();
+			indexMin = i;
+		}
 	}
 
+	// Сдвиг
+	i = 0;
 	bool isFirts = false;
-	for (int i = 0; i < chain.size(); i++) {
-		Basis[chain[i]].setValue((i % 2 > 0) ? Basis[chain[i]].getValue() - min : Basis[chain[i]].getValue() + min);
-		if (!isFirts && *Basis[chain[i]].Value == 0 && chain[i] != indexPotential) {
-			std::cout << "\n Из базиса выводится элемент X(" << chain[i] / CountProduct << "," << chain[i] % CountConsumption << ") = " << min;
-			delete Basis[chain[i]].Value;
-			Basis[chain[i]].Value = nullptr;
+	for (int x : chain) {
+		Basis[x].setValue((i % 2 > 0) ? Basis[x].getValue() - min : Basis[x].getValue() + min);
+		if (indexMin == i) {	//&& chain[i] != indexPotential //!isFirts &&
+			std::cout << "\n Из базиса выводится элемент X(" << x / CountConsumption + 1 << "," << x % CountConsumption + 1 << ") = " << min;
+			delete Basis[x].Value;
+			Basis[x].Value = nullptr;
 			isFirts = true;
 		}
+		i++;
 	}
 
 #pragma endregion	
@@ -295,7 +383,6 @@ std::vector<int> TransportTask::getChain() {
 
 	auto locBasis(Basis);
 
-	// ВОТ ТУТ ЖОПА
 	std::vector<int> Chain;							// Список индексов из цепочки
 	std::stack<std::array<int, 4>> state;			// Стек состояний
 
@@ -313,7 +400,7 @@ std::vector<int> TransportTask::getChain() {
 
 	int counterIter = 0;
 	// Вектор с базисными индексами в различных направлениях
-	std::array<int, 4> ListDir{-1, -1, -1, -1};
+	std::array<int, 4> ListDir{ -1, -1, -1, -1 };
 
 	/// <summary>
 	/// Цикл перехода к новой базисной ячейке
@@ -329,7 +416,7 @@ std::vector<int> TransportTask::getChain() {
 		// Добавить проверку на не более двух вершин в строке и столбце, что ещё раз позволит скипать шаги.
 
 		// Обход вверх
-		if(fromDir != up){
+		if (fromDir != up) {
 			bool isBasis = false;
 			int ii = i - CountConsumption;			// Временный итератор по столбцу
 			columnIter = ii % CountConsumption;
@@ -365,7 +452,7 @@ std::vector<int> TransportTask::getChain() {
 		}
 
 		// Обход вниз
-		if(fromDir != down){
+		if (fromDir != down) {
 			bool isBasis = false;
 			int ii = i + CountConsumption;			// Временный итератор по столбцу
 			columnIter = ii % CountConsumption;
@@ -401,7 +488,7 @@ std::vector<int> TransportTask::getChain() {
 		}
 
 		// Обход влево
-		if(fromDir != left){
+		if (fromDir != left) {
 			bool isBasis = false;
 			int ii = i - 1;							// Временный итератор по строке			
 			rowIter = ii / CountConsumption;
@@ -436,11 +523,11 @@ std::vector<int> TransportTask::getChain() {
 		}
 
 		// Обход вправо
-		if(fromDir != right){
+		if (fromDir != right) {
 			bool isBasis = false;
-         	int ii = i + 1;							// Временный итератор по строке
+			int ii = i + 1;							// Временный итератор по строке
 			rowIter = ii / CountConsumption;
-			
+
 			// Пока не достигнута левая границы
 			while (rowIter == row && ii < locBasis.size()) {
 				// Автоматически исключается случай хождения в обратном направлении благодаря contains
@@ -485,7 +572,7 @@ std::vector<int> TransportTask::getChain() {
 				}
 				j = (Direction)(j + 1);
 			}
-			
+
 			// Костыли
 			// На следующую итерацию блокируется ход назад.
 			switch (j)
@@ -533,8 +620,8 @@ std::vector<int> TransportTask::getChain() {
 	newChain.push_back(Chain[1]);
 
 	for (int i = 2; i < Chain.size(); i++) {
-		if (Chain[i - 1] % CountProduct == Chain[i] % CountProduct &&
-			Chain[i - 2] % CountProduct == Chain[i] % CountProduct) {
+		if (Chain[i - 1] % CountConsumption == Chain[i] % CountConsumption &&
+			Chain[i - 2] % CountConsumption == Chain[i] % CountConsumption) {
 			newChain[newChain.size() - 1] = Chain[i];			// Перезапись дубля			
 		}
 		else {
@@ -580,8 +667,8 @@ potential TransportTask::FindPotential() {
 		// Проблема на итерации 2 - пропадает связн
 		if (Basis[iter].Value != nullptr) {
 
-			int a = iter / CountProduct;
-			int b = iter % CountProduct;
+			int a = iter / CountConsumption;
+			int b = iter % CountConsumption;
 
 			u = &(*U)[a];
 			v = &(*V)[b];
@@ -595,10 +682,10 @@ potential TransportTask::FindPotential() {
 				iter++;
 			}
 			else if (*u != LONG_MAX && *v != LONG_MAX) {
-				if (iter + CountConsumption < Basis.size())
-					iter += CountConsumption;	// Переход на некст строку
-				else
-					iter++;
+				//if (iter + CountConsumption < Basis.size())
+				//	iter += CountConsumption;	// Переход на некст строку
+				//else
+				iter++;
 			}
 			else {
 				*u = 0;
@@ -621,29 +708,28 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 
 	double min = LONG_MAX;
 	int iterMin;
-	//std::set<double> set;
 
 	std::cout << "\n Оценки свободных переменных:\n ";
 
 	while (iter < Basis.size()) {
 		if (Basis[iter].Value == nullptr) {
 
-			u = &U[iter % CountProduct];
-			v = &V[iter / CountProduct];
+			u = &U[iter / CountConsumption];
+			v = &V[iter % CountConsumption];
 
 			if (min > Basis[iter].Cost - *u - *v) {
 				iterMin = iter;
 				min = Basis[iter].Cost - *u - *v;
 			}
-			std::cout << "ΔC[" << iter / CountProduct << "," << iter % CountConsumption << "] = " << Basis[iter].Cost - *u - *v << "\n ";
+			std::cout << "ΔC[" << iter / CountConsumption + 1 << "," << iter % CountConsumption + 1 << "] = " << Basis[iter].Cost - *u - *v << "\n ";
 			iter++;
 		}
 		else
 			iter++;
 	}
 
-	delete & U;
-	delete & V;
+	delete& U;
+	delete& V;
 
 
 	indexPotential = iterMin;

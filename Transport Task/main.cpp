@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "TransportTask.h"
 
-std::string path = "Data/Input2.txt";
+std::string path = "Data/InputExample2.txt";
 
 int main() {
     SetConsoleCP(1251);
