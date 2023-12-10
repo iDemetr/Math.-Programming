@@ -5,7 +5,7 @@
 
 //--------------------------------------------------------------------------------||
 
-enum Direction { Non = -1, up, down, left, right };
+enum Direction { notFound = -2, Non = -1, up, down, left, right };
 
 //--------------------------------------------------------------------------------||
 
@@ -133,7 +133,7 @@ private:
 	/// <summary>
 	/// Вычисление методом потенциалов
 	/// </summary>
-	static potential FindPotential();
+	static potential DefinePotential();
 
 	/// <summary>
 	/// Проверка правильности решения

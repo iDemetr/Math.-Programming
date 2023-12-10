@@ -16,6 +16,7 @@
 #include <windows.h>
 
 #include <iomanip>
+#include <ctime>
 
 #include <vector>
 #include <array>
