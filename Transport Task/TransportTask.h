@@ -71,6 +71,11 @@ private:
 
 	static int indexPotential;
 
+	/// <summary>
+	/// Индексы фиктивных поставщиков и потребителей
+	/// </summary>
+	static int dummyProd, dummyConsum;
+
 #pragma endregion
 
 	//--------------------------------------------------------------------------------||
@@ -90,6 +95,12 @@ private:
 	/// </summary>
 	static void PrintInputs();
 	
+	static int getRow(int);
+
+	static int getColumn(int);
+
+	static int getMinCost(std::vector<cells>&, std::vector<double> &, std::vector<double> &);
+
 	//--------------------------------------------------------------------------------||
 	
 	/// <summary>

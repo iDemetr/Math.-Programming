@@ -11,6 +11,8 @@ std::vector<double> TransportTask::LPenalty;
 int TransportTask::CountProduct = 0;
 int TransportTask::CountConsumption = 0;
 int TransportTask::indexPotential = 0;
+int TransportTask::dummyConsum = -1;
+int TransportTask::dummyProd = -1;
 
 //--------------------------------------------------------------------------------||
 
@@ -24,13 +26,16 @@ void TransportTask::Calc(std::string path) {
 		PrintInputs();
 	}
 
-	ANWA();
+	int Tstart = clock();
+
+	//ANWA();
+	MME();
 
 	PrintBasis();
 
 	CheckBasis();
 	std::cout << "\n Поиск оптимального решения.";
-	int Tstart = clock();
+	int Tstart2 = clock();
 
 	int iter = 0, MaxIter = 100;
 	while (iter++ < MaxIter) {
@@ -75,6 +80,8 @@ void TransportTask::Calc(std::string path) {
 
 	std::cout << "\n ============================================================== Результаты ===";
 	std::cout << "\n Количество сделанных шагов:" << iter;
+	std::cout << "\n Время поиска допустимого решения:" << double(Tstart2 - Tstart) / 1000 << " секунды.";
+	std::cout << "\n Время поиска оптимального решения:" << double(TEnd - Tstart2) / 1000 << " секунды.";
 	std::cout << "\n Время решения задачи:" << double(TEnd - Tstart) / 1000 << " секунды.";
 
 	CheckBasis();
@@ -247,7 +254,7 @@ bool TransportTask::Correction() {
 		if (sumConsum < sumProd) {
 			std::cout << "\n\n Открытая транспортная задача с перепроизводством.";
 
-			CountConsumption++;
+			dummyConsum = CountConsumption++;
 			std::vector<cells> locBasis;
 
 			if (LPenalty.size() != 0) {
@@ -295,7 +302,7 @@ bool TransportTask::Correction() {
 					Basis.push_back(cells(nullptr, 0));				// Заполнение стоимости нулями, если нет штрафов
 			}
 
-			CountProduct++;
+			dummyProd = CountProduct++;
 			LProduction.push_back(sumConsum - sumProd);
 		}
 
@@ -356,10 +363,125 @@ void TransportTask::ANWA() {
 }
 
 void TransportTask::MME() {
+	auto locLProduction(LProduction);
+	auto locLConsumption(LConsumption);
 
+	auto locProd = locLProduction.begin();
+	auto locConsum = locLConsumption.begin();
+
+	auto locBasis(Basis);
+
+	int iter = 0;
+
+	while (iter < CountConsumption + CountProduct - 1) {
+		int index = getMinCost(locBasis, locLProduction, locLConsumption);
+
+		int row = getRow(index);
+		int column = getColumn(index);
+
+		int a = locLConsumption[column] - locLProduction[row];
+		
+		// И потребитель и производитель кончились
+		if (a == 0) {
+			locLConsumption[column] = 0;
+			Basis[index].setValue(locLProduction[row]);
+			locLProduction[row] = 0;
+
+			int iter = CountConsumption*row;
+			while (getRow(iter) == row) {
+				locBasis[iter].Cost = -1;
+				iter++;
+			}
+			//int iter = column;
+			//while (getColumn(iter) == column && iter < locBasis.size()) {
+			//	locBasis[iter].Cost = -1;
+			//	iter += CountConsumption;
+			//}
+		}
+		// остаток у потребителя - удаляется строке
+		else if (a > 0) {
+			locLConsumption[column] = a;
+			Basis[index].setValue(locLProduction[row]);
+			locLProduction[row] = 0;
+
+			int iter = CountConsumption * row;
+			while (getRow(iter) == row) {
+				locBasis[iter].Cost = -1;
+				iter++;
+			}
+		}
+		// Остаток у производителя - удаляется столбец
+		else if (a < 0) {
+			locLProduction[row] = -a;
+			Basis[index].setValue(locLConsumption[column]);
+			locLConsumption[column] = 0;
+
+			int i = column;
+			while (getColumn(i) == column && i < locBasis.size()) {
+				locBasis[i].Cost = -1;
+				i += CountConsumption;
+			}
+		}
+		iter++;
+	}
 }
 
 //--------------------------------------------------------------------------------||
+
+int TransportTask::getRow(int x) {
+	return x / CountConsumption;
+}
+
+int TransportTask::getColumn(int x) {
+	return x % CountConsumption;
+}
+
+int TransportTask::getMinCost(std::vector<cells>& locBasis, std::vector<double> &locProd, std::vector<double> &locConsum) {
+	double min = locBasis[0].Cost;
+	int index = 0, iter = 0;
+	bool f1 = false;
+	for (auto x : locBasis) {
+		if ((min > x.Cost || min == -1) && x.Cost > -1 && getRow(iter) != dummyProd && getColumn(iter) != dummyConsum) {
+			min = x.Cost;
+			index = iter;
+			f1 = true;
+		}		
+		iter++;
+	}
+
+	// Если мнимальный элемент в базисе не была найден
+	// Поиск среди фиктивных столбцов/строк
+	if (!f1 && min == -1) {
+
+		// Поиск по фиктивному столбцу
+		if (dummyConsum != -1) {
+			iter = dummyConsum;
+			while (iter < locBasis.size()) {
+				if ((min > locBasis[iter].Cost || min == -1) && locBasis[iter].Cost > -1) {
+					min = locBasis[iter].Cost;
+					index = iter;
+					f1 = true;
+				}
+				iter += CountConsumption;
+			}
+		}
+
+		// Поиск по фиктивной строке
+		else if (dummyProd != -1) {
+			iter = (dummyProd + 1) * CountConsumption;
+			while (iter < locBasis.size()) {
+				if ((min > locBasis[iter].Cost || min == -1) && locBasis[iter].Cost > -1) {
+					min = locBasis[iter].Cost;
+					index = iter;
+					f1 = true;
+				}
+				iter++;
+			}
+		}
+	}
+
+	return index;
+}
 
 template <typename T>
 bool contains(std::vector<T> vec, T value) {
@@ -380,7 +502,7 @@ void TransportTask::NewBasis() {
 
 	std::cout << "\n Цепочка:\n ";
 	for (int x : chain) {
-		std::cout << "(" << x / CountConsumption + 1 << ", " << x % CountConsumption + 1 << ")";
+		std::cout << "(" << getRow(x) + 1 << ", " << getColumn(x) + 1 << ")";
 	}
 
 #pragma region --- Поиск минимального элемента и сдвиг по цепочке ---
@@ -404,7 +526,7 @@ void TransportTask::NewBasis() {
 	for (int x : chain) {
 		Basis[x].setValue((i % 2 > 0) ? Basis[x].getValue() - min : Basis[x].getValue() + min);
 		if (indexMin == i) {	//&& chain[i] != indexPotential //!isFirts &&
-			std::cout << "\n Из базиса выводится элемент X(" << x / CountConsumption + 1 << "," << x % CountConsumption + 1 << ") = " << min;
+			std::cout << "\n Из базиса выводится элемент X(" << getRow(x) + 1 << "," << getColumn(x) + 1 << ") = " << min;
 			delete Basis[x].Value;
 			Basis[x].Value = nullptr;
 			isFirts = true;
@@ -432,9 +554,9 @@ std::vector<int> TransportTask::getChain() {
 
 	Direction fromDir = Non;
 
-	int row = i / CountConsumption;
+	int row = getRow(i);
 	int rowIter = 0;
-	int column = i % CountConsumption;
+	int column = getColumn(i);
 	int columnIter = 0;
 
 	int counterIter = 0;
@@ -447,8 +569,8 @@ std::vector<int> TransportTask::getChain() {
 	while (!isChain && counterIter < CountConsumption * CountConsumption) {
 		counterIter++;
 
-		column = i % CountConsumption;
-		row = i / CountConsumption;
+		column = getColumn(i);
+		row = getRow(i);
 
 		// Добавить проверку на не более двух вершин в строке и столбце, что ещё раз позволит скипать шаги.
 
@@ -456,7 +578,7 @@ std::vector<int> TransportTask::getChain() {
 		if (fromDir != up) {
 			bool isBasis = false;
 			int ii = i - CountConsumption;			// Временный итератор по столбцу
-			columnIter = ii % CountConsumption;
+			columnIter = getColumn(ii);
 
 			// Пока не достигнут потолок
 			while (columnIter == column && ii >= 0) {
@@ -472,8 +594,8 @@ std::vector<int> TransportTask::getChain() {
 				}
 
 				ii -= CountConsumption;				// Шаг по матрице вверх
-				rowIter = ii / CountConsumption;
-				columnIter = ii % CountConsumption;
+				rowIter = getRow(ii);
+				columnIter = getColumn(ii);
 			}
 
 			// Если базис был встречен
@@ -493,7 +615,7 @@ std::vector<int> TransportTask::getChain() {
 		if (fromDir != down) {
 			bool isBasis = false;
 			int ii = i + CountConsumption;			// Временный итератор по столбцу
-			columnIter = ii % CountConsumption;
+			columnIter = getColumn(ii);
 
 			// Пока не достигнут пол
 			while (columnIter == column && ii < locBasis.size()) {
@@ -509,8 +631,8 @@ std::vector<int> TransportTask::getChain() {
 				}
 
 				ii += CountConsumption;				// Шаг по матрице вверх
-				rowIter = ii / CountConsumption;
-				columnIter = ii % CountConsumption;
+				rowIter = getRow(ii);
+				columnIter = getColumn(ii);
 			}
 
 			// Если базис был встречен
@@ -530,7 +652,7 @@ std::vector<int> TransportTask::getChain() {
 		if (fromDir != left) {
 			bool isBasis = false;
 			int ii = i - 1;							// Временный итератор по строке			
-			rowIter = ii / CountConsumption;
+			rowIter = getRow(ii);
 
 			// Пока не достигнута левая границы
 			while (rowIter == row && ii >= 0) {
@@ -545,8 +667,8 @@ std::vector<int> TransportTask::getChain() {
 				}
 
 				ii--;				// Шаг по матрице вверх
-				columnIter = ii % CountConsumption;
-				rowIter = ii / CountConsumption;
+				columnIter = getColumn(ii);
+				rowIter = getRow(ii);
 			}
 
 			// Если базис был встречен
@@ -566,7 +688,7 @@ std::vector<int> TransportTask::getChain() {
 		if (fromDir != right) {
 			bool isBasis = false;
 			int ii = i + 1;							// Временный итератор по строке
-			rowIter = ii / CountConsumption;
+			rowIter = getRow(ii);
 
 			// Пока не достигнута левая границы
 			while (rowIter == row && ii < locBasis.size()) {
@@ -582,8 +704,8 @@ std::vector<int> TransportTask::getChain() {
 				}
 
 				ii++;				// Шаг по матрице вверх
-				columnIter = ii % CountConsumption;
-				rowIter = ii / CountConsumption;
+				columnIter = getColumn(ii);
+				rowIter = getRow(ii);
 			}
 
 			// Если базис был встречен
@@ -665,10 +787,10 @@ std::vector<int> TransportTask::getChain() {
 
 	for (int i = 2; i < Chain.size(); i++) {
 		// Если на одной прямой лежит подряд нескольо вершин - удалить среднюю.
-		if (Chain[i - 1] % CountConsumption == Chain[i] % CountConsumption &&	// По столбцу
-			Chain[i - 2] % CountConsumption == Chain[i] % CountConsumption ||
-			Chain[i - 1] / CountConsumption == Chain[i] / CountConsumption &&	// По строке
-			Chain[i - 2] / CountConsumption == Chain[i] / CountConsumption) {
+		if (getColumn(Chain[i - 1]) == getColumn(Chain[i]) &&	// По столбцу
+			getColumn(Chain[i - 2]) == getColumn(Chain[i]) ||
+			getRow(Chain[i - 1]) == getRow(Chain[i]) &&	// По строке
+			getRow(Chain[i - 2]) == getRow(Chain[i]) ) {
 			newChain.back() = Chain[i];			// Перезапись дубля			
 		}
 		else {
@@ -735,8 +857,8 @@ potential TransportTask::DefinePotential() {
 
 		// Если выбрано направление для шага
 		if (locBasis[iter].Value != nullptr) {
-			row = iter / CountConsumption;
-			column = iter % CountConsumption;
+			row = getRow(iter);
+			column = getColumn(iter);
 
 			u = &(*U)[row];
 			v = &(*V)[column];
@@ -766,7 +888,7 @@ potential TransportTask::DefinePotential() {
 				// Шаг по столбцу - пока не конец и не встречена бизасная ячейка
 				while (locIter / CountConsumption < CountProduct && locBasis[locIter].Value == nullptr) {
 					locIter += CountConsumption;
-					locCol = locIter % CountConsumption;
+					locCol = getColumn(locIter);
 					if (locCol != column) {
 						locIter--;
 						break;
@@ -815,7 +937,7 @@ potential TransportTask::DefinePotential() {
 				// Шаг по столбцу - пока не конец и не встречена бизасная ячейка
 				while (locIter / CountConsumption > 0 && locBasis[locIter].Value == nullptr) {
 					locIter -= CountConsumption;
-					if (locIter % CountConsumption != column) {
+					if (getColumn(locIter) != column) {
 						locIter--;
 						break;
 					}
@@ -931,14 +1053,14 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 	while (iter < Basis.size()) {
 		if (Basis[iter].Value == nullptr) {
 
-			u = &U[iter / CountConsumption];
-			v = &V[iter % CountConsumption];
+			u = &U[getRow(iter)];
+			v = &V[getColumn(iter)];
 
 			if (min > Basis[iter].Cost - *u - *v) {
 				iterMin = iter;
 				min = Basis[iter].Cost - *u - *v;
 			}
-			std::cout << "ΔC[" << iter / CountConsumption + 1 << "," << iter % CountConsumption + 1 << "] = " << Basis[iter].Cost - *u - *v << "\n ";
+			std::cout << "ΔC[" << getRow(iter) + 1 << "," << getColumn(iter) + 1 << "] = " << Basis[iter].Cost - *u - *v << "\n ";
 			iter++;
 		}
 		else
