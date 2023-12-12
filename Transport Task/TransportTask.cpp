@@ -183,7 +183,7 @@ void TransportTask::PrintBasis() {
 	std::cout << "\n Полученный допустимый базис: \n";
 	for (int j = 0; j < Basis.size(); j++) {
 		if (Basis[j].Value != nullptr) {
-			std::cout << "(" << j / CountConsumption << "," << j % CountConsumption << ") ";
+			std::cout << "(" << j / CountConsumption + 1 << "," << j % CountConsumption + 1<< ") ";
 		}
 	}
 
@@ -243,54 +243,63 @@ bool TransportTask::Correction() {
 		return false;
 	}
 
-	else if (sumConsum < sumProd) {
-		std::cout << "\n Открытая транспортная задача с перепроизводством.";
+	else {
+		if (sumConsum < sumProd) {
+			std::cout << "\n\n Открытая транспортная задача с перепроизводством.";
 
-		CountConsumption++;
-		std::vector<cells> locBasis;
+			CountConsumption++;
+			std::vector<cells> locBasis;
 
-		if (LPenalty.size() != 0) {
-			auto iPenalty = LPenalty.begin();
+			if (LPenalty.size() != 0) {
+				auto iPenalty = LPenalty.begin();
 
-			int i = 0;
-			for (auto x : Basis) {
-				if (i % CountConsumption != CountConsumption)
-					locBasis.push_back(x);
-				else {
-					locBasis.push_back(cells(nullptr, *iPenalty));
-					iPenalty++;
+				int j = 0;
+				for (int i = 0; i < Basis.size(); i++) {
+					if (j++ % CountConsumption + 1 != CountConsumption)
+						locBasis.push_back(Basis[i]);
+					else {
+						locBasis.push_back(cells(nullptr, *iPenalty));
+						iPenalty++;
+						i--;
+					}
+				}
+
+				locBasis.push_back(cells(nullptr, *iPenalty));
+			}
+			else {
+				int j = 0;
+				for (int i = 0; i < Basis.size(); i++) {
+					if (j++ % CountConsumption + 1 != CountConsumption)
+						locBasis.push_back(Basis[i]);
+					else {
+						i--;
+						locBasis.push_back(cells(nullptr, 0));
+					}
+				}
+				locBasis.push_back(cells(nullptr, 0));
+			}
+
+			LConsumption.push_back(sumProd - sumConsum);
+			Basis = locBasis;
+		}
+
+		else if (sumProd < sumConsum) {
+			std::cout << "\n\n Открытая транспортная задача с недопроизводством.";
+			if (LPenalty.size() != 0) {
+				for (auto x : LPenalty) {
+					Basis.push_back(cells(nullptr, x));
 				}
 			}
-		}
-		else {
-			int i = 0;
-			for (auto x : Basis) {
-				if (i % CountConsumption != CountConsumption)
-					locBasis.push_back(x);
-				else {
-					locBasis.push_back(cells(nullptr, 0));
-				}
+			else {
+				for (int i = 0; i < CountConsumption; i++)
+					Basis.push_back(cells(nullptr, 0));				// Заполнение стоимости нулями, если нет штрафов
 			}
+
+			CountProduct++;
+			LProduction.push_back(sumConsum - sumProd);
 		}
 
-		LConsumption.push_back(sumProd - sumConsum);
-		Basis = locBasis;
-	}
-
-	else if (sumProd < sumConsum) {
-		std::cout << "\n Открытая транспортная задача с недопроизводством.";
-		if (LPenalty.size() != 0) {
-			for (auto x : LPenalty) {
-				Basis.push_back(cells(nullptr, x));
-			}
-		}
-		else {
-			for (int i = 0; i < CountConsumption; i++)
-				Basis.push_back(cells(nullptr, 0));				// Заполнение стоимости нулями, если нет штрафов
-		}
-
-		CountProduct++;
-		LProduction.push_back(sumConsum - sumProd);
+		std::cout << "\n ================================================================= Коррекция ===";
 	}
 
 	return true;
@@ -322,8 +331,8 @@ void TransportTask::ANWA() {
 
 			if (remains == 0) {
 				locProd++;							// Переход к некст производству, если ресурсы закончились
-				if ((obj - Basis.begin()) / CountConsumption < CountConsumption - 1) {
-
+				// Если не последняя строка
+				if ((obj - Basis.begin()) / CountConsumption < CountProduct - 1) {
 
 					// Занос фиктивного 0 в матрицу для вычисления потенциалов 
 					if (((obj + 1) - Basis.begin()) % CountConsumption >= 0)
@@ -414,7 +423,7 @@ std::vector<int> TransportTask::getChain() {
 	auto locBasis(Basis);
 
 	std::vector<int> Chain;							// Список индексов из цепочки
-	std::stack<std::array<int, 4>> state;			// Стек состояний
+	std::stack<std::array<int, 5>> state;			// Стек состояний
 
 	Chain.push_back(indexPotential);
 
@@ -429,8 +438,8 @@ std::vector<int> TransportTask::getChain() {
 	int columnIter = 0;
 
 	int counterIter = 0;
-	// Вектор с базисными индексами в различных направлениях
-	std::array<int, 4> ListDir{ -1, -1, -1, -1 };
+	// Вектор с базисными индексами в различных направлениях и направлением откуда пришли
+	std::array<int, 5> ListDir{ -1, -1, -1, -1, Non };
 
 	/// <summary>
 	/// Цикл перехода к новой базисной ячейке
@@ -471,6 +480,7 @@ std::vector<int> TransportTask::getChain() {
 			if (isBasis) {
 				if (isChain) {
 					i = ii;				// Цепочка найдена - остановка поисков
+					Chain.push_back(i);
 					break;
 				}
 				else {
@@ -507,6 +517,7 @@ std::vector<int> TransportTask::getChain() {
 			if (isBasis) {
 				if (isChain) {
 					i = ii;				// Цепочка найдена - остановка поисков
+					Chain.push_back(i);
 					break;
 				}
 				else {
@@ -542,6 +553,7 @@ std::vector<int> TransportTask::getChain() {
 			if (isBasis) {
 				if (isChain) {
 					i = ii;				// Цепочка найдена - остановка поисков
+					Chain.push_back(i);
 					break;
 				}
 				else {
@@ -578,6 +590,7 @@ std::vector<int> TransportTask::getChain() {
 			if (isBasis) {
 				if (isChain) {
 					i = ii;				// Цепочка найдена - остановка поисков
+					Chain.push_back(i);
 					break;
 				}
 				else {
@@ -623,7 +636,7 @@ std::vector<int> TransportTask::getChain() {
 
 			state.push(ListDir);
 
-			ListDir = { -1, -1, -1, -1 };
+			ListDir = { -1, -1, -1, -1, fromDir };
 		}
 
 		// Если все пути пройдены - шаг назад
@@ -634,14 +647,15 @@ std::vector<int> TransportTask::getChain() {
 			Chain.pop_back();			// Удаление из цепочки
 			i = Chain.back();
 
-			state.pop();
 			ListDir[up] = state.top()[up];			// Возврат предыдущего состояния обхода.
 			ListDir[down] = state.top()[down];		// Возврат предыдущего состояния обхода.
 			ListDir[left] = state.top()[left];		// Возврат предыдущего состояния обхода.
 			ListDir[right] = state.top()[right];	// Возврат предыдущего состояния обхода.
+			fromDir = (Direction)state.top()[4];
+			ListDir[4] = fromDir;
+			state.pop();
 		}
 	}
-	//Chain.pop_back();			// Удаление дубля индекса добавления базисной переменной.
 
 #pragma region --- Избавление от нескольких вершин на одной прямой ---
 
@@ -661,6 +675,8 @@ std::vector<int> TransportTask::getChain() {
 			newChain.push_back(Chain[i]);
 		}
 	}
+
+	newChain.pop_back();			// Удаление дубля индекса добавления базисной переменной.
 
 	Chain = newChain;
 #pragma endregion
