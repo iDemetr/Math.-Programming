@@ -76,6 +76,8 @@ private:
 	/// </summary>
 	static int dummyProd, dummyConsum;
 
+	static bool isPrint;
+
 #pragma endregion
 
 	//--------------------------------------------------------------------------------||

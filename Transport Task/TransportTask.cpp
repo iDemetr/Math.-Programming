@@ -14,6 +14,8 @@ int TransportTask::indexPotential = 0;
 int TransportTask::dummyConsum = -1;
 int TransportTask::dummyProd = -1;
 
+bool TransportTask::isPrint = true;
+
 //--------------------------------------------------------------------------------||
 
 void TransportTask::Calc(std::string path) {
@@ -39,34 +41,42 @@ void TransportTask::Calc(std::string path) {
 
 	int iter = 0, MaxIter = 100;
 	while (iter++ < MaxIter) {
-		std::cout << "\n ===============================================================";
-		std::cout << " Итерация №" << iter << " ===";
-		std::cout << "\n Расчёт потенциалов:\n ";
+		if (isPrint) {
+			std::cout << "\n ===============================================================";
+			std::cout << " Итерация №" << iter << " ===";
+			std::cout << "\n Расчёт потенциалов:\n ";
+		}
 		potential potent = DefinePotential();
 
 #pragma region --- ВЫВОД ПОТЕНЦИАЛОВ ---
 
-		int i = 0;
-		for (auto x : *potent.first) {
-			std::cout << "U[" << ++i << "] = " << x << '\t';
-		}
-		i = 0;
-		std::cout << "\n ";
-		for (auto x : *potent.second) {
-			std::cout << "V[" << ++i << "] = " << x << '\t';
+		if (isPrint) {
+
+			int i = 0;
+			for (auto x : *potent.first) {
+				std::cout << "U[" << ++i << "] = " << x << '\t';
+			}
+			i = 0;
+			std::cout << "\n ";
+			for (auto x : *potent.second) {
+				std::cout << "V[" << ++i << "] = " << x << '\t';
+			}
 		}
 
 #pragma endregion
 
 		if (!CheckPotential(*potent.first, *potent.second)) {
 
-			std::cout << "\n Условие оптимальности не выполняется";
-			std::cout << "\n В базис вводится X(" << indexPotential / CountConsumption + 1 << "," 
-												  << indexPotential % CountConsumption + 1 << ")";
+			if (isPrint) {
+				std::cout << "\n Условие оптимальности не выполняется";
+				std::cout << "\n В базис вводится X(" << indexPotential / CountConsumption + 1 << ","
+					<< indexPotential % CountConsumption + 1 << ")";
+			}
 
 			NewBasis();
 
-			PrintBasis();
+			if (isPrint)
+				PrintBasis();
 
 			CheckBasis();
 		}
@@ -190,7 +200,7 @@ void TransportTask::PrintBasis() {
 	std::cout << "\n Полученный допустимый базис: \n";
 	for (int j = 0; j < Basis.size(); j++) {
 		if (Basis[j].Value != nullptr) {
-			std::cout << "(" << j / CountConsumption + 1 << "," << j % CountConsumption + 1<< ") ";
+			std::cout << "(" << j / CountConsumption + 1 << "," << j % CountConsumption + 1 << ") ";
 		}
 	}
 
@@ -380,23 +390,18 @@ void TransportTask::MME() {
 		int column = getColumn(index);
 
 		int a = locLConsumption[column] - locLProduction[row];
-		
+
 		// И потребитель и производитель кончились
 		if (a == 0) {
 			locLConsumption[column] = 0;
 			Basis[index].setValue(locLProduction[row]);
 			locLProduction[row] = 0;
 
-			int iter = CountConsumption*row;
+			int iter = CountConsumption * row;
 			while (getRow(iter) == row) {
 				locBasis[iter].Cost = -1;
 				iter++;
 			}
-			//int iter = column;
-			//while (getColumn(iter) == column && iter < locBasis.size()) {
-			//	locBasis[iter].Cost = -1;
-			//	iter += CountConsumption;
-			//}
 		}
 		// остаток у потребителя - удаляется строке
 		else if (a > 0) {
@@ -436,7 +441,7 @@ int TransportTask::getColumn(int x) {
 	return x % CountConsumption;
 }
 
-int TransportTask::getMinCost(std::vector<cells>& locBasis, std::vector<double> &locProd, std::vector<double> &locConsum) {
+int TransportTask::getMinCost(std::vector<cells>& locBasis, std::vector<double>& locProd, std::vector<double>& locConsum) {
 	double min = locBasis[0].Cost;
 	int index = 0, iter = 0;
 	bool f1 = false;
@@ -445,7 +450,7 @@ int TransportTask::getMinCost(std::vector<cells>& locBasis, std::vector<double> 
 			min = x.Cost;
 			index = iter;
 			f1 = true;
-		}		
+		}
 		iter++;
 	}
 
@@ -500,9 +505,11 @@ void TransportTask::NewBasis() {
 
 	std::vector<int> chain = getChain();
 
-	std::cout << "\n Цепочка:\n ";
-	for (int x : chain) {
-		std::cout << "(" << getRow(x) + 1 << ", " << getColumn(x) + 1 << ")";
+	if (isPrint) {
+		std::cout << "\n Цепочка:\n ";
+		for (int x : chain) {
+			std::cout << "(" << getRow(x) + 1 << ", " << getColumn(x) + 1 << ")";
+		}
 	}
 
 #pragma region --- Поиск минимального элемента и сдвиг по цепочке ---
@@ -526,7 +533,10 @@ void TransportTask::NewBasis() {
 	for (int x : chain) {
 		Basis[x].setValue((i % 2 > 0) ? Basis[x].getValue() - min : Basis[x].getValue() + min);
 		if (indexMin == i) {	//&& chain[i] != indexPotential //!isFirts &&
-			std::cout << "\n Из базиса выводится элемент X(" << getRow(x) + 1 << "," << getColumn(x) + 1 << ") = " << min;
+			
+			if (isPrint)
+				std::cout << "\n Из базиса выводится элемент X(" << getRow(x) + 1 << "," << getColumn(x) + 1 << ") = " << min;
+			
 			delete Basis[x].Value;
 			Basis[x].Value = nullptr;
 			isFirts = true;
@@ -540,7 +550,8 @@ void TransportTask::NewBasis() {
 
 std::vector<int> TransportTask::getChain() {
 
-	std::cout << "\n Поиск цепочки.";
+	if (isPrint)
+		std::cout << "\n Поиск цепочки.";
 
 	auto locBasis(Basis);
 
@@ -790,7 +801,7 @@ std::vector<int> TransportTask::getChain() {
 		if (getColumn(Chain[i - 1]) == getColumn(Chain[i]) &&	// По столбцу
 			getColumn(Chain[i - 2]) == getColumn(Chain[i]) ||
 			getRow(Chain[i - 1]) == getRow(Chain[i]) &&	// По строке
-			getRow(Chain[i - 2]) == getRow(Chain[i]) ) {
+			getRow(Chain[i - 2]) == getRow(Chain[i])) {
 			newChain.back() = Chain[i];			// Перезапись дубля			
 		}
 		else {
@@ -803,7 +814,8 @@ std::vector<int> TransportTask::getChain() {
 	Chain = newChain;
 #pragma endregion
 
-	std::cout << "\n Цепочка найдена за " << counterIter << " шагов.";
+	if (isPrint)
+		std::cout << "\n Цепочка найдена за " << counterIter << " шагов.";
 
 	return Chain;
 }
@@ -813,7 +825,10 @@ bool TransportTask::CheckBasis() {
 	for (auto obj : Basis) {
 		ansrew += obj.Cost * obj.getValue();
 	}
-	std::cout << "\n Значение целевой функции: " << ansrew;
+
+	if (isPrint)
+		std::cout << "\n Значение целевой функции: " << ansrew;
+
 	return 0;
 }
 
@@ -823,25 +838,13 @@ potential TransportTask::DefinePotential() {
 	double* u;
 	double* v;
 
-#pragma region --- Инициализация списков потенциалов ---
-
-	auto* U = new std::vector<double>();
-	for (size_t i = 0; i < CountProduct; i++) {
-		U->push_back(LONG_MAX);
-	}
-	(*U)[0] = 0;
-
-	auto* V = new std::vector<double>();
-	for (size_t i = 0; i < CountConsumption; i++) {
-		V->push_back(LONG_MAX);
-	}
-
-#pragma endregion
+	bool isFirst = true;
 
 	int initPotentU = 1,
 		initPotentV = 0,
 		row = 0,
-		column = 0;
+		column = 0,
+		iter = 0;
 
 	auto locBasis(Basis);
 
@@ -851,9 +854,57 @@ potential TransportTask::DefinePotential() {
 	// Стек состояний
 	std::stack<std::array<int, 4>> stateMashine;
 
-	int iter = 0;
-	bool isFirst = true;
+#pragma region --- Инициализация списков потенциалов ---
+
+	auto* U = new std::vector<double>();
+	for (size_t i = 0; i < CountProduct; i++) {
+		U->push_back(LONG_MAX);
+	}
+
+	// Инициализация нулем потенциала строки, где есть поставка.
+	for (int iter = 0; iter < locBasis.size(); iter += CountConsumption) {
+		if (locBasis[iter].Value != nullptr) {
+			(*U)[getRow(iter)] = 0;
+			break;
+		}
+	}
+
+	auto* V = new std::vector<double>();
+	for (size_t i = 0; i < CountConsumption; i++) {
+		V->push_back(LONG_MAX);
+	}
+
+#pragma endregion
+
 	while (initPotentU != CountProduct || initPotentV != CountConsumption) {
+
+		// Если обход закончен, но все потенциалы так и не были найдены - последний обход в тупую.
+		if (iter == -1) {
+			while (++iter < locBasis.size()) {
+				// Если выбрано направление для шага
+				if (locBasis[iter].Value != nullptr) {
+					row = getRow(iter);
+					column = getColumn(iter);
+
+					u = &(*U)[row];
+					v = &(*V)[column];
+
+					// Шаг по столбцу - заполнение потенц поставщиков
+					if (*u == LONG_MAX && *v != LONG_MAX) {
+						*u = Basis[iter].Cost - *v;
+						initPotentU++;
+						locBasis[iter].Value = nullptr;
+					}
+
+					// Шаг по строке - заполнение потенц потребителей
+					else if (*v == LONG_MAX && *u != LONG_MAX) {
+						*v = Basis[iter].Cost - *u;
+						initPotentV++;
+						locBasis[iter].Value = nullptr;
+					}
+				}
+			}
+		}
 
 		// Если выбрано направление для шага
 		if (locBasis[iter].Value != nullptr) {
@@ -884,15 +935,13 @@ potential TransportTask::DefinePotential() {
 		if (ListDir[down] == Non) {
 			if (row + 1 < CountProduct) {
 				int locIter = iter + CountConsumption;
-				int locCol = -1;
 				// Шаг по столбцу - пока не конец и не встречена бизасная ячейка
-				while (locIter / CountConsumption < CountProduct && locBasis[locIter].Value == nullptr) {
+				while (getRow(locIter + CountConsumption) < CountProduct && locBasis[locIter].Value == nullptr) {
 					locIter += CountConsumption;
-					locCol = getColumn(locIter);
-					if (locCol != column) {
-						locIter--;
-						break;
-					}
+					//if (getColumn(locIter) != column) {
+					//	locIter -= CountConsumption;
+					//	break;
+					//}
 				}
 
 				if (locIter < Basis.size() && locBasis[locIter].Value != nullptr) {
@@ -910,12 +959,12 @@ potential TransportTask::DefinePotential() {
 		if (ListDir[right] == Non) {
 			if (column + 1 < CountConsumption) {
 				int locIter = iter + 1;
-				while (locIter / CountConsumption < CountConsumption && locBasis[locIter].Value == nullptr) {
+				while (getRow(locIter + 1) == row && locBasis[locIter].Value == nullptr) {
 					locIter++;
-					if (locIter / CountConsumption != row) {
-						locIter--;
-						break;
-					}
+					//if (getRow(locIter) != row) {
+					//	locIter--;
+					//	break;
+					//}
 				}
 
 				if (locIter < Basis.size() && locBasis[locIter].Value != nullptr) {
@@ -932,15 +981,15 @@ potential TransportTask::DefinePotential() {
 		}
 
 		if (ListDir[up] == Non) {
-			if (row - 1 > 0) {
+			if (row - 1 >= 0) {
 				int locIter = iter - CountConsumption;
 				// Шаг по столбцу - пока не конец и не встречена бизасная ячейка
-				while (locIter / CountConsumption > 0 && locBasis[locIter].Value == nullptr) {
+				while (getRow(locIter - CountConsumption) > 0 && locBasis[locIter].Value == nullptr && locIter - CountConsumption >= 0) {
 					locIter -= CountConsumption;
-					if (getColumn(locIter) != column) {
-						locIter--;
+					/*if (getColumn(locIter) != column || locIter < 0) {
+						locIter+= CountConsumption;
 						break;
-					}
+					}*/
 				}
 
 				if (locIter < Basis.size() && locBasis[locIter].Value != nullptr) {
@@ -957,14 +1006,14 @@ potential TransportTask::DefinePotential() {
 		}
 
 		if (ListDir[left] == Non) {
-			if (column - 1 > 0) {
+			if (column - 1 >= 0) {
 				int locIter = iter - 1;
-				while (locIter / CountConsumption < CountConsumption && locBasis[locIter].Value == nullptr) {
+				while (getRow(locIter - 1) == row && locBasis[locIter].Value == nullptr && locIter - 1 >= 0) {
 					locIter--;
-					if (locIter / CountConsumption != row) {
-						locIter--;
+					/*if (getRow(locIter) != row || locIter < 0) {
+						locIter++;
 						break;
-					}
+					}*/
 				}
 
 				if (locIter < Basis.size() && locBasis[locIter].Value != nullptr) {
@@ -981,9 +1030,9 @@ potential TransportTask::DefinePotential() {
 		}
 
 		//-------------------------------------------------------------------------||
-		
+
 		// Cелектор направлений из уже отсканированных ячеек.
-		while (!stateMashine.empty() || isFirst) {
+		while (!stateMashine.empty() || isFirst || iter != -1) {
 			// Если есть куда ходить
 			if (ListDir[0] > -1 || ListDir[1] > -1 || ListDir[2] > -1 || ListDir[3] > -1) {
 
@@ -991,30 +1040,39 @@ potential TransportTask::DefinePotential() {
 				//int fromCell = -1;
 				bool is = false;
 				Direction j = up;
+				Direction k = up;
 				while (j < 4) {
+					// Если направление задано и не указывает само на себя, 
+					// или значения потенциалов в этой точке всё ещё не были расчитаны..
+					// || 
+					// (*U)[getRow(iter)] == LONG_MAX ||
+					// (*V)[getColumn(iter)] == LONG_MAX)
 					if (ListDir[j] > -1 && ListDir[j] != iter) {
 						indexes.push_back(iter);
 						iter = ListDir[j];
 						ListDir[j] = notFound;		// Сбрасывается направление, в котором будет шаг
+						//if (!is) {
+						k = j;
+						//}
 						is = true;
 						break;
 					}
 					j = (Direction)(j + 1);
 				}
 
-				switch (j)
+				switch (k)
 				{
 				case up:
-					j = down;
+					k = down;
 					break;
 				case down:
-					j = up;
+					k = up;
 					break;
 				case left:
-					j = right;
+					k = right;
 					break;
 				case right:
-					j = left;
+					k = left;
 					break;
 				}
 
@@ -1022,9 +1080,14 @@ potential TransportTask::DefinePotential() {
 				if (is) {
 					stateMashine.push(ListDir);
 					ListDir = { -1, -1, -1, -1 };
-					ListDir[j] = iter;				//Пометка направления из которого пришли - номером текущей ячейки.
+					ListDir[k] = iter;				//Пометка направления из которого пришли - номером текущей ячейки.
 					break;
 				}
+			}
+
+			if (indexes.empty()) {
+				iter = -1;
+				break;
 			}
 
 			// Иначе - обновление stateMashine и новая проверка
@@ -1048,7 +1111,8 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 	double min = LONG_MAX;
 	int iterMin;
 
-	std::cout << "\n Оценки свободных переменных:\n ";
+	if (isPrint)
+		std::cout << "\n Оценки свободных переменных:\n ";
 
 	while (iter < Basis.size()) {
 		if (Basis[iter].Value == nullptr) {
@@ -1060,7 +1124,8 @@ bool TransportTask::CheckPotential(std::vector<double>& U, std::vector<double>& 
 				iterMin = iter;
 				min = Basis[iter].Cost - *u - *v;
 			}
-			std::cout << "ΔC[" << getRow(iter) + 1 << "," << getColumn(iter) + 1 << "] = " << Basis[iter].Cost - *u - *v << "\n ";
+			if (isPrint)
+				std::cout << "ΔC[" << getRow(iter) + 1 << "," << getColumn(iter) + 1 << "] = " << Basis[iter].Cost - *u - *v << "\n ";
 			iter++;
 		}
 		else
