@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DynamicProgramm.h";
 
-const std::string path = "Data/Input.txt";
+const std::string path = "Data/Input3.txt";
 
 //using namespace std;
 

@@ -1,9 +1,6 @@
 #pragma once
 #include "pch.h"
 
-//#ifndef DynamicProgramm_H
-//#define DynamicProgramm_H
-
 //--------------------------------------------------------------------------------||
 
 static class DynamicProgramm {
@@ -107,5 +104,3 @@ private:
 	//--------------------------------------------------------------------------------||
 
 };
-
-//#endif //DynamicProgramm_H#pragma once
